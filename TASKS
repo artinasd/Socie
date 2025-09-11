@@ -1,0 +1,9 @@
+Disabling Signup button after being clicked
+
+Disabling Login button after being clicked ✔
+Fixing bug in R2Sidebar and SuggestedUsersView ✔
+Replacing redux state with redundant api requests in all components ✔
+Adding unfollow functionality ✔
+Hiding non followed users' posts in logged session ✔
+Hiding logged user's story from the list ✔
+Hiding stories from unlogged session ✔
