@@ -13,8 +13,6 @@ function SidebarR2 () {
     const suggestedUsers = useSelector(state => state.users)
     const followedUsers = useSelector(state => state.connections)
 
-
-
     const rankedSuggestions = useMemo(() => {
         if (!suggestedUsers) return []
         if (!loggedUser) return suggestedUsers
@@ -45,47 +43,45 @@ function SidebarR2 () {
         }
     }, [followedUsers, suggestedUsers, loggedUser, rankedSuggestions]);
 
-    let endSliceIndex = 2
+    let endSliceIndex = 3
     let expandButton = <></>
     let conditionalContent = <>
-        <div className='bg-gradient-to-t from-gray-100 to-white h-[73px] rounded-b-xl flex items-center justify-center'>
-            <button onClick={handleLoadButton}>
-                <p className='text-gray-700 underline hover:text-blue-400 text-blue-500'>Load More</p>
+        <div className='bg-gradient-to-t from-gray-100 to-white h-[73px] rounded-b-xl flex items-center justify-center border-t border-gray-100'>
+            <button onClick={() => setLoadState(true)} className="px-4 py-2 hover:bg-gray-100 rounded-full transition-colors">
+                <p className='text-sm font-medium text-blue-500'>Show More</p>
             </button>
         </div>
     </>
 
-    function handleLoadButton() {
-        setLoadState(true)
-    }
-
     if (loadState === true) {
         endSliceIndex = 8
-
-        expandButton = <button onClick={() => navigate('/suggestions')}>
-            <p className='text-xs text-blue-400 underline'>Show All</p>
+        expandButton = <button onClick={() => navigate('/suggestions')} className="hover:underline">
+            <p className='text-xs text-blue-500 font-medium'>See All</p>
         </button>
-
         conditionalContent = <></>
     }
 
-    if (loadState === false && suggestedUsers.length === 0) {
+    if (suggestedUsers === null || followedUsers === null) {
         conditionalContent = (
-            <div className='col-span-3'><img className='w-6 opacity-50 mx-auto mb-6' src={loadingGIF}/></div>
+            <div className='py-8'><img className='w-6 opacity-50 mx-auto' src={loadingGIF} alt="Loading..."/></div>
+        )
+    } else if (visibleSuggestedUsers && visibleSuggestedUsers.length === 0) {
+        conditionalContent = (
+            <div className='text-center py-6 text-sm text-gray-500'>Caught up for now!</div>
         )
     }
 
     return (
         <>
-            <div className='mr-3 mt-3 mb-3'>
-                <div style={{scrollbarWidth: "none"}} className={`bg-white rounded-xl shadow-lg w-[270px] max-h-[359px] overflow-y-scroll`}>
-                    <div className='px-5 pt-5 flex flex-row justify-between sticky top-0 bg-white'>
-                        <h2 className='text-gray-400 text-xs font-bold'>Suggestions</h2>
+            <div className='mr-3 mt-3 mb-6'>
+                <div style={{scrollbarWidth: "none"}} className={`bg-white rounded-xl shadow-sm border border-gray-100 w-[270px] max-h-[420px] overflow-y-scroll`}>
+                    <div className='px-5 py-4 flex flex-row justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-50'>
+                        <h2 className='text-gray-500 text-xs font-bold uppercase tracking-wider'>Suggestions</h2>
                         {expandButton}
                     </div>
 
-                    <ul className='space-y-6 mt-5 px-5 pb-2'>
-                    {visibleSuggestedUsers && visibleSuggestedUsers.slice(0, endSliceIndex).map((each, index) => (
+                    <ul className='mt-2 px-3 pb-2'>
+                        {visibleSuggestedUsers && visibleSuggestedUsers.slice(0, endSliceIndex).map((each, index) => (
                             <li key={index}>
                                 <SuggestedAccountCard username={each.username} image={each.pic} name={each.name} matches={each._matches} />
                             </li>

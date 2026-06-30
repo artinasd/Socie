@@ -2,11 +2,8 @@ import writePost from '../../assets/writePost.png'
 import videCam from '../../assets/videoCam.png'
 import photoCam from '../../assets/photoCam.png'
 import gallery from '../../assets/gallery.png'
-import {newUserActions} from "../../Data/newUserSlice.js";
-import {useDispatch} from "react-redux";
+import {useDispatch, useSelector} from "react-redux";
 import React, {useEffect, useRef, useState} from "react";
-import {useSelector} from "react-redux";
-import {useState as useStateLocal} from "react";
 import ImageCropper from "../ImageCropper.jsx";
 import supabase from "../../Data/supabase.js";
 import {postsSliceActions} from "../../Data/postsSlice.js";
@@ -16,6 +13,7 @@ function FeedAddPost() {
     const [uploadedMediaState, setUploadedMediaState] = useState('')
     const [cropper, setCropper] = useState(null)
     const [userId, setUserId] = useState(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const dispatch = useDispatch()
     const descriptionRef = useRef(null)
     const reduxStateLoggedUser = useSelector((state) => state.loggedUser)
@@ -28,10 +26,10 @@ function FeedAddPost() {
                     .select('id')
                     .eq('username', reduxStateLoggedUser)
                     .single()
-
-                setUserId(id.id)
+                if (!error && id) {
+                    setUserId(id.id)
+                }
             }
-
             fetchId()
         }
     }, [reduxStateLoggedUser]);
@@ -50,80 +48,89 @@ function FeedAddPost() {
     function handleCroppedPost(base64) {
         setUploadedMediaState(base64)
         setMediaPreviewState(
-            <img src={base64} className='w-20 h-20 rounded-xl opacity-80 mt-1 mr-auto'/>
+            <img src={base64} className='w-20 h-20 rounded-xl opacity-80 mt-2 object-cover mr-auto'/>
         )
         setCropper(null)
     }
 
     async function handleAddPost() {
+        if (!descriptionRef.current.value.trim() && !uploadedMediaState) {
+            return;
+        }
+        setIsSubmitting(true);
         const { data, error } = await supabase
             .from('posts')
             .insert([
                 {posterId: userId,
-                 media: uploadedMediaState,
-                 description: descriptionRef.current.value},
+                    media: uploadedMediaState,
+                    description: descriptionRef.current.value},
             ])
             .select()
 
         if (descriptionRef.current) {
             descriptionRef.current.value = ''
             setMediaPreviewState(<></>)
+            setUploadedMediaState('')
         }
 
-        // Optimistically refresh posts in store
         try {
             let { data: posts } = await supabase.from('posts').select('*')
             let { data: users } = await supabase.from('users').select('*')
             const postAndUser = (posts || []).map(post => ({ ...post, user: users.find(u => u.id === post.posterId) }))
             dispatch(postsSliceActions.setPosts(postAndUser))
         } catch(e) {}
+
+        setIsSubmitting(false);
     }
 
     return (
-        <div className='bg-white p-2 w-fit h-fit px-[40px] py-[20px] flex flex-col items-center mx-auto mt-6 rounded-xl shadow-2xl'>
-            <div className='w-[600px] flex justify-center gap-2 mb-2'>
-                <div className='bg-gray-100 bg-opacity-60 rounded-full w-[28px] h-[28px] flex items-center justify-center'>
-                    <img className='w-[17px] opacity-60 pb-1' src={writePost}/>
+        <div className='bg-white p-6 w-full max-w-[680px] flex flex-col items-center mx-auto mt-6 rounded-xl shadow-lg'>
+            <div className='w-full flex justify-start items-center gap-2 mb-2'>
+                <div className='bg-gray-100 bg-opacity-60 rounded-full w-8 h-8 flex items-center justify-center'>
+                    <img className='w-4 opacity-60' src={writePost}/>
                 </div>
-                <h2 className='mr-auto text-xs text-[18px] font-normal text-gray-300 mt-[5px]'>Create Post</h2>
+                <h2 className='text-gray-400 font-medium'>Create Post</h2>
             </div>
 
-            <div>
+            <div className='w-full'>
                 <textarea
                     ref={descriptionRef}
+                    placeholder="What's on your mind?"
                     style={{scrollbarWidth: "none"}}
-                    className='border border-gray-300 rounded-xl w-[600px] h-[70px] mt-2
-                    focus:outline-none focus:border-gray-400 focus:h-[150px] transition-all duration-300 p-2 resize-none'>
+                    className='border border-gray-200 rounded-xl w-full h-[70px] mt-2
+                    focus:outline-none focus:border-blue-300 focus:h-[120px] transition-all duration-300 p-3 resize-none bg-gray-50'>
                 </textarea>
             </div>
 
-            {mediaPreviewState}
+            <div className="w-full flex justify-start">
+                {mediaPreviewState}
+            </div>
 
-            <div className='grid grid-cols-3 w-[600px] mt-3 text-gray-500'>
-                <div className='col-span-2 flex gap-4'>
-                    <button className='flex hover:bg-black hover:bg-opacity-10 transition py-1 rounded'>
-                        <img className='w-6 mr-1' src={videCam}/>
-                        <h2>Live Video</h2>
+            <div className='flex items-center justify-between w-full mt-4 text-gray-500'>
+                <div className='flex gap-4'>
+                    <button className='flex items-center hover:bg-gray-100 transition px-3 py-2 rounded-lg text-sm'>
+                        <img className='w-5 mr-2' src={videCam}/>
+                        <span className="hidden sm:inline">Live Video</span>
                     </button>
 
-                    <button className='flex hover:bg-black hover:bg-opacity-10 transition py-1 rounded'>
-                        <img className='w-6 mr-1' src={photoCam}/>
-                        <h2>Feeling/Activity</h2>
+                    <button className='flex items-center hover:bg-gray-100 transition px-3 py-2 rounded-lg text-sm'>
+                        <img className='w-5 mr-2' src={photoCam}/>
+                        <span className="hidden sm:inline">Feeling/Activity</span>
                     </button>
 
-                    <label className='flex hover:bg-black hover:bg-opacity-10 transition py-1 rounded' htmlFor='mediaPicker'>
-                        <img className='w-6 mr-1' src={gallery}/>
-                        <h2>Photo/Video</h2>
+                    <label className='flex items-center hover:bg-gray-100 transition px-3 py-2 rounded-lg text-sm cursor-pointer' htmlFor='mediaPicker'>
+                        <img className='w-5 mr-2' src={gallery}/>
+                        <span className="hidden sm:inline">Photo/Video</span>
                     </label>
-                    <input id='mediaPicker' type='file' onChange={handleMediaUpload} style={{display: 'none'}}/>
+                    <input id='mediaPicker' type='file' accept="image/*" onChange={handleMediaUpload} style={{display: 'none'}}/>
                 </div>
 
-                <div className='col-span-1 ml-auto'>
-                    <button
-                        onClick={handleAddPost}
-                        className='bg-blue-400 rounded-full text-white px-3 py-[3px]'>Share
-                    </button>
-                </div>
+                <button
+                    onClick={handleAddPost}
+                    disabled={isSubmitting}
+                    className={`rounded-full text-white px-6 py-2 font-medium transition-all ${isSubmitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 shadow-md'}`}>
+                    {isSubmitting ? 'Sharing...' : 'Share'}
+                </button>
             </div>
             {cropper && (
                 <ImageCropper imageSrc={cropper.src} aspect={cropper.aspect} onCancel={() => setCropper(null)} onComplete={handleCroppedPost} />

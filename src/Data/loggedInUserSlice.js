@@ -1,11 +1,11 @@
 import {createSlice} from "@reduxjs/toolkit";
 
 function saveData(username) {
-    localStorage.setItem("whatever!", JSON.stringify(username))
+    localStorage.setItem("socie_session", JSON.stringify(username))
 }
 
 function getLoggedUser() {
-    const readFile = localStorage.getItem("whatever!")
+    const readFile = localStorage.getItem("socie_session")
     if (readFile) {
         return JSON.parse(readFile);
     }

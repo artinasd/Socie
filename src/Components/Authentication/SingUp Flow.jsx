@@ -3,7 +3,6 @@ import SignUpForm from "./SignUpForm.jsx";
 import CompleteSignup from "./CompleteSignup.jsx";
 import NameAndUsername from "./NameAndUsername.jsx";
 import { useDispatch } from "react-redux";
-import { newUserActions } from "../../Data/newUserSlice.js";
 import { useNavigate } from "react-router-dom";
 import { loggedUserActions } from "../../Data/loggedInUserSlice.js";
 import supabase from "../../Data/supabase.js";
@@ -21,7 +20,7 @@ function SingUpFlow() {
         posts: {
             stories: [],
             feed: []
-        }, // Initialize feed as an empty list
+        },
         connections: {followings: [], followers: []}
     });
 
@@ -35,7 +34,6 @@ function SingUpFlow() {
 
     async function handleFinishSignUp() {
         try {
-
             const { data, error } = await supabase
                 .from('users')
                 .insert([
@@ -51,18 +49,18 @@ function SingUpFlow() {
 
             if (error) {
                 console.error("Error creating user:", error);
-                // Optionally, handle the error by showing a message to the user.
+                alert("Error creating user: " + error.message);
                 return;
             }
 
             dispatch(loggedUserActions.setLoggedUser(userData.username));
             navigate(`/${userData.username}/profile`);
         }
-
-    catch (err) {
-        console.error("Unexpected error creating user:", err);
+        catch (err) {
+            console.error("Unexpected error creating user:", err);
+            alert("Unexpected error: " + err.message);
+        }
     }
-}
 
     return (
         <>

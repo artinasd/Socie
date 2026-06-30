@@ -1,11 +1,7 @@
 import AccountCards from "./UI Costume Elements/AccountCards.jsx";
 import {useSelector} from "react-redux";
-import {useNavigate} from "react-router-dom";
-import supabase from "../Data/supabase.js";
 import {useEffect, useMemo, useState} from "react";
 import loadingGIF from "../assets/loading.gif";
-
-// A LIL ISSUE HERE IS THAT WHEN THERE ARE NO USERS CREATED, THE APP WILL SHOW LOADING GIF WITHOUT AN END.
 
 function SuggestedUsersView() {
     const [visibleSuggestedUsers, setVisibleSuggestedUsers] = useState(null)
@@ -44,23 +40,31 @@ function SuggestedUsersView() {
         }
     }, [followedUsers, suggestedUsers, loggedUser, rankedSuggestions]);
 
-    if (suggestedUsers.length === 0 || followedUsers.length === 0) {
+    if (suggestedUsers === null || followedUsers === null) {
         return (
-            <div className='col-span-3 mx-auto my-64'><img className='w-12 opacity-50' src={loadingGIF}/></div>
+            <div className='col-span-3 mx-auto my-64'><img className='w-12 opacity-50' src={loadingGIF} alt="Loading..."/></div>
+        )
+    }
+
+    if (visibleSuggestedUsers && visibleSuggestedUsers.length === 0) {
+        return (
+            <div className='col-span-3 mx-auto mt-32 text-center text-xl text-gray-500'>
+                No new suggestions available right now.
+            </div>
         )
     }
 
     return (
-        <div className='col-span-3'>
-
-            <ul className='grid grid-cols-4 gap-y-10 mt-12'>
+        <div className='col-span-3 px-6'>
+            <h2 className="text-2xl font-bold mt-10 mb-2">Suggested For You</h2>
+            <p className="text-gray-500 mb-8">Discover people you might want to follow</p>
+            <ul className='flex flex-wrap gap-6'>
                 {visibleSuggestedUsers && visibleSuggestedUsers.map((eachUser, index) =>
-                <li key={index}>
-                    <AccountCards image={eachUser.pic} name={eachUser.name} username={eachUser.username} matches={eachUser._matches} />
-                </li>
+                    <li key={index}>
+                        <AccountCards image={eachUser.pic} name={eachUser.name} username={eachUser.username} matches={eachUser._matches} />
+                    </li>
                 )}
             </ul>
-
         </div>
     )
 }
