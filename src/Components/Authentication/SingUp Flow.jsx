@@ -5,59 +5,37 @@ import NameAndUsername from "./NameAndUsername.jsx";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { loggedUserActions } from "../../Data/loggedInUserSlice.js";
-import supabase from "../../Data/supabase.js";
+import { api } from "../../Data/api.js";
 
 function SingUpFlow() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [step, setStep] = useState(1);
     const [userData, setUserData] = useState({
-        name: '',
-        username: '',
-        email: '',
-        password: '',
-        pic: '',
-        posts: {
-            stories: [],
-            feed: []
-        },
-        connections: {followings: [], followers: []}
+        name: '', username: '', email: '', password: '', pic: ''
     });
 
-    function nextStep() {
-        setStep((prevState) => prevState + 1);
-    }
-
-    function updateUserData(newData) {
-        setUserData((prevState) => ({ ...prevState, ...newData }));
-    }
+    function nextStep() { setStep((prevState) => prevState + 1); }
+    function updateUserData(newData) { setUserData((prevState) => ({ ...prevState, ...newData })); }
 
     async function handleFinishSignUp() {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .insert([
-                    {
-                        name: userData.name,
-                        username: userData.username,
-                        email: userData.email,
-                        password: userData.password,
-                        pic: userData.pic
-                    },
-                ])
-                .select()
+            const { data, error } = await api.post('/users', {
+                name: userData.name,
+                username: userData.username,
+                email: userData.email,
+                password: userData.password,
+                pic: userData.pic
+            });
 
-            if (error) {
-                console.error("Error creating user:", error);
-                alert("Error creating user: " + error.message);
+            if (error || !data) {
+                alert("Error creating user: " + (error || 'Unknown error'));
                 return;
             }
 
             dispatch(loggedUserActions.setLoggedUser(userData.username));
             navigate(`/${userData.username}/profile`);
-        }
-        catch (err) {
-            console.error("Unexpected error creating user:", err);
+        } catch (err) {
             alert("Unexpected error: " + err.message);
         }
     }

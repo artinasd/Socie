@@ -9,7 +9,7 @@ import SingUpFlow from "../Components/Authentication/SingUp Flow.jsx";
 import {useSelector, useDispatch} from "react-redux";
 import LogInForm from "../Components/Authentication/LogInForm.jsx";
 import {useEffect} from "react";
-import supabase from "../Data/supabase.js";
+import { api } from "../Data/api.js";
 import {postsSliceActions} from "../Data/postsSlice.js";
 import {usersSliceActions} from "../Data/usersSlice.js";
 import {connectionsSliceActions} from "../Data/connectionsSlice.js";
@@ -21,9 +21,7 @@ function AppLayout() {
 
     useEffect(() => {
         async function fetchAllUsers() {
-            let { data: users, error } = await supabase
-                .from('users')
-                .select('*')
+            let { data: users, error } = await api.get('/users');
 
             if (!error && users) {
                 dispatch(usersSliceActions.setUsers(users))
@@ -37,16 +35,12 @@ function AppLayout() {
                 dispatch(usersSliceActions.setUsers([]))
             }
         }
-
         fetchAllUsers()
     }, [loggedUserUsername, dispatch]);
 
     useEffect(() => {
         async function fetchConnections() {
-            let { data: connections, error } = await supabase
-                .from('connections')
-                .select('*')
-
+            let { data: connections, error } = await api.get('/connections');
             if (!error && connections) {
                 dispatch(connectionsSliceActions.setConnections(connections))
             } else {
@@ -58,13 +52,8 @@ function AppLayout() {
 
     useEffect(() => {
         async function fetchAllPosts() {
-            let { data: posts, error: postError } = await supabase
-                .from('posts')
-                .select('*')
-
-            let { data: users, error: userError } = await supabase
-                .from('users')
-                .select('*')
+            let { data: posts, error: postError } = await api.get('/posts');
+            let { data: users, error: userError } = await api.get('/users');
 
             if (postError || userError) {
                 console.warn("Error fetching posts or users")
@@ -73,11 +62,9 @@ function AppLayout() {
                 const postAndUser = posts.map(post => (
                     {...post, user: users.find(user => user.id === post.posterId)})
                 )
-
                 dispatch(postsSliceActions.setPosts(postAndUser))
             }
         }
-
         fetchAllPosts()
     }, [dispatch, loggedUserUsername]);
 
@@ -96,9 +83,7 @@ function AppLayout() {
                 {path: '/:username/profile', element: <Profile />}
             ]
         },
-
         {path: '/sign-up', element: <SingUpFlow />},
-
         {path: '/log-in', element: <LogInForm/>}
     ])
     return (

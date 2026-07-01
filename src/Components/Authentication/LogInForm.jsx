@@ -2,7 +2,7 @@ import {useRef, useState} from "react";
 import {loggedUserActions} from "../../Data/loggedInUserSlice.js";
 import {useDispatch} from "react-redux";
 import {useNavigate} from "react-router-dom";
-import supabase from "../../Data/supabase.js";
+import { api } from "../../Data/api.js";
 
 function LogInForm() {
     const passwordRef = useRef('')
@@ -23,25 +23,19 @@ function LogInForm() {
             return;
         }
 
-        let { data: user, error } = await supabase
-            .from('users')
-            .select('password')
-            .eq('username', username)
-            .single()
+        let { data: user, error } = await api.post('/users/login', {
+            username,
+            password: passwordRef.current.value
+        });
 
         if (error || !user) {
-            setErrorMsg("User not found");
+            setErrorMsg(error || "User not found");
             setIsDisabled(false);
             return;
         }
 
-        if (passwordRef.current.value === user.password) {
-            dispatch(loggedUserActions.setLoggedUser(username))
-            navigate(`/${username}/profile`)
-        } else {
-            setErrorMsg("Incorrect password");
-            setIsDisabled(false);
-        }
+        dispatch(loggedUserActions.setLoggedUser(user.username))
+        navigate(`/${user.username}/profile`)
     }
 
     return (
@@ -51,33 +45,13 @@ function LogInForm() {
                 <p className='text-center px-4 text-lg font-light'>
                     Log back to your account and check out all you've missed while you've been away
                 </p>
-
                 <form onSubmit={loginHandle} className='flex flex-col space-y-4 w-72'>
-                    <input
-                        required={true}
-                        placeholder='Username'
-                        type='text'
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
-                        className='p-3 rounded-xl mt-8 border border-gray-200 focus:outline-none focus:border-[#84C7AE]'/>
-
-                    <input
-                        required={true}
-                        placeholder='Password'
-                        type='password'
-                        ref={passwordRef}
-                        className='p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#84C7AE]'/>
-
+                    <input required={true} placeholder='Username' type='text' value={username} onChange={e => setUsername(e.target.value)} className='p-3 rounded-xl mt-8 border border-gray-200 focus:outline-none focus:border-[#84C7AE]'/>
+                    <input required={true} placeholder='Password' type='password' ref={passwordRef} className='p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#84C7AE]'/>
                     {errorMsg && <p className="text-red-500 text-sm text-center">{errorMsg}</p>}
-
-                    <button
-                        disabled={isDisabled}
-                        type='submit'
-                        className={`p-3 rounded-xl text-white mx-10 transition duration-300 font-bold
-                            ${isDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#84C7AE] hover:bg-green-400 shadow-md'}`}>
+                    <button disabled={isDisabled} type='submit' className={`p-3 rounded-xl text-white mx-10 transition duration-300 font-bold ${isDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#84C7AE] hover:bg-green-400 shadow-md'}`}>
                         {isDisabled ? 'Please Wait...' : 'Login'}
                     </button>
-
                     <p className='text-center pt-2 text-xs'>Don't have an account?<br/> Click here to &nbsp;
                         <button type="button" onClick={() => navigate('/sign-up')} className='hover:underline text-blue-500 font-semibold'>sign up</button>
                     </p>
