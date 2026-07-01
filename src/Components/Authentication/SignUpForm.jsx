@@ -1,53 +1,31 @@
 import { useRef, useState } from "react";
-import { useDispatch } from "react-redux";
-import { loggedUserActions } from "../../Data/loggedInUserSlice.js";
-import { useNavigate } from "react-router-dom";
-import { api } from "../../Data/api.js";
 
-function SignUpForm() {
+function SignUpForm({ nextStep, updateUserData }) {
     const nameRef = useRef();
     const usernameRef = useRef();
     const emailRef = useRef();
     const passwordRef = useRef();
     const [errorMsg, setErrorMsg] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
 
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-
-    async function submitHandle(event) {
+    function submitHandle(event) {
         event.preventDefault();
         setErrorMsg('');
-        setIsLoading(true);
 
         const newUser = {
             name: nameRef.current.value.trim(),
             username: usernameRef.current.value.trim(),
             email: emailRef.current.value.trim(),
             password: passwordRef.current.value,
-            pic: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' // Default pic
         };
 
         if (!newUser.name || !newUser.username || !newUser.email || !newUser.password) {
             setErrorMsg('All fields are required.');
-            setIsLoading(false);
             return;
         }
 
-        try {
-            const { data, error } = await api.post('/users', newUser);
-
-            if (error) {
-                setErrorMsg('Username or Email might already be taken.');
-            } else {
-                dispatch(loggedUserActions.setLoggedUser(data.username));
-                navigate('/complete-signup'); // Direct to avatar/bio setup
-            }
-        } catch (err) {
-            setErrorMsg('Server error. Please try again later.');
-        }
-
-        setIsLoading(false);
+        // Just update data and move to the next step
+        updateUserData(newUser);
+        nextStep();
     }
 
     return (
@@ -65,9 +43,9 @@ function SignUpForm() {
                 <input ref={passwordRef} type='password' placeholder='Password'
                        className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
 
-                <button type="submit" disabled={isLoading}
-                        className={`w-full text-white font-bold py-3 rounded-lg transition ${isLoading ? 'bg-green-300 cursor-not-allowed' : 'bg-[#00DB7F] hover:bg-green-500'}`}>
-                    {isLoading ? 'Creating...' : 'Sign Up'}
+                <button type="submit"
+                        className='w-full text-white font-bold py-3 rounded-lg transition bg-[#00DB7F] hover:bg-green-500'>
+                    Next
                 </button>
             </form>
         </div>
