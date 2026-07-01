@@ -1,168 +1,134 @@
-import {useSelector, useDispatch} from "react-redux";
-import {useNavigate} from "react-router-dom";
-import {useEffect, useState} from "react";
+import { useEffect, useState, useRef } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { api } from "../Data/api.js";
-import loadingGIF from "../assets/loading.gif"
 
-function PostCards({image, profile, name, description, style, username, postId}) {
-	const navigate = useNavigate()
-	const dispatch = useDispatch()
-	const loggedUser = useSelector(redux => redux.loggedUser)
-	const users = useSelector(redux => redux.users)
-	const [loggedUserId, setLoggedUserId] = useState(null)
-	const [loggedUserObj, setLoggedUserObj] = useState(null)
-	const [likeCount, setLikeCount] = useState(0)
-	const [isLiked, setIsLiked] = useState(false)
-	const [isLikeBusy, setIsLikeBusy] = useState(false)
-	const [commentCount, setCommentCount] = useState(0)
-	const [isCommentsOpen, setIsCommentsOpen] = useState(false)
-	const [comments, setComments] = useState([])
-	const [isCommentsLoading, setIsCommentsLoading] = useState(false)
-	const [newComment, setNewComment] = useState("")
-	const [isCommentBusy, setIsCommentBusy] = useState(false)
-	const [isMenuOpen, setIsMenuOpen] = useState(false)
-	const [removeButtonPlaceholder, setRemoveButtonPlaceholder] = useState('Remove')
+function PostCards({ userPic, name, username, content, image, id }) {
+	const navigate = useNavigate();
+	const loggedUser = useSelector((state) => state.loggedUserData);
+	const [likes, setLikes] = useState([]);
+	const [comments, setComments] = useState([]);
+	const [isLiked, setIsLiked] = useState(false);
+	const [showComments, setShowComments] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const commentRef = useRef();
 
 	useEffect(() => {
-		if (loggedUser && users) {
-			const u = users.find(u => u.username === loggedUser);
-			if (u) { setLoggedUserId(u.id); setLoggedUserObj(u); }
-		}
-	}, [loggedUser, users]);
+		async function fetchInteractions() {
+			const { data: fetchedLikes } = await api.get(`/likes/${id}`);
+			const { data: fetchedComments } = await api.get(`/comments/${id}`);
 
-	useEffect(() => {
-		async function fetchLikesAndComments() {
-			if (!postId) return;
-			const { data: likes } = await api.get(`/likes/${postId}`);
-			setLikeCount(likes?.length || 0);
-			if (loggedUserId) setIsLiked(likes?.some(l => l.userId === loggedUserId));
-
-			const { data: coms } = await api.get(`/comments/${postId}`);
-			setCommentCount(coms?.length || 0);
-		}
-		fetchLikesAndComments()
-	}, [postId, loggedUserId]);
-
-	async function toggleLike() {
-		if (!loggedUserId || !postId || isLikeBusy) return;
-		setIsLikeBusy(true)
-		try {
-			if (isLiked) {
-				await api.delete('/likes', { postId, userId: loggedUserId });
-				setIsLiked(false)
-				setLikeCount(prev => Math.max(0, (prev || 0) - 1))
-			} else {
-				await api.post('/likes', { postId, userId: loggedUserId });
-				setIsLiked(true)
-				setLikeCount(prev => (prev || 0) + 1)
+			if (fetchedLikes) {
+				setLikes(fetchedLikes);
+				if (loggedUser) {
+					setIsLiked(fetchedLikes.some(like => like.userId === loggedUser.id));
+				}
 			}
-		} finally { setIsLikeBusy(false) }
-	}
-
-	async function openComments() {
-		if (!postId) return;
-		setIsCommentsOpen(true)
-		setIsCommentsLoading(true)
-		const { data: commentsList } = await api.get(`/comments/${postId}`);
-		const commenterIds = Array.from(new Set((commentsList || []).map(c => c.userId)));
-		const usersMap = users.reduce((acc, u) => { acc[u.id] = u; return acc }, {});
-		const merged = (commentsList || []).map(c => ({ ...c, user: usersMap[c.userId] }));
-		setComments(merged);
-		setIsCommentsLoading(false);
-	}
-
-	async function submitComment(e) {
-		e?.preventDefault?.()
-		if (!newComment.trim() || !loggedUserId || !postId || isCommentBusy) return;
-		setIsCommentBusy(true)
-		try {
-			const { data, error } = await api.post('/comments', { postId, userId: loggedUserId, content: newComment.trim() });
-			if (!error && data) {
-				setComments(prev => [{...data, user: loggedUserObj}, ...prev])
-				setCommentCount(prev => (prev || 0) + 1)
-				setNewComment("")
+			if (fetchedComments) {
+				setComments(fetchedComments);
 			}
-		} finally { setIsCommentBusy(false) }
+		}
+		fetchInteractions();
+	}, [id, loggedUser]);
+
+	async function handleLike() {
+		if (!loggedUser) return navigate('/sign-up');
+
+		if (isLiked) {
+			await api.delete('/likes', { postId: id, userId: loggedUser.id });
+			setLikes(prev => prev.filter(l => l.userId !== loggedUser.id));
+			setIsLiked(false);
+		} else {
+			await api.post('/likes', { postId: id, userId: loggedUser.id });
+			setLikes(prev => [...prev, { postId: id, userId: loggedUser.id }]);
+			setIsLiked(true);
+		}
 	}
 
-	async function handleDeletePost() {
-		setRemoveButtonPlaceholder(<img src={loadingGIF} className='w-4' />)
-		await api.delete(`/posts/${postId}`);
-		try {
-			let { data: posts } = await api.get('/posts')
-			const postAndUser = (posts || []).map(post => ({ ...post, user: users.find(u => u.id === post.posterId) }))
-			const { postsSliceActions } = await import("../Data/postsSlice.js")
-			dispatch(postsSliceActions.setPosts(postAndUser))
-		} catch(e) {}
+	async function handleAddComment(e) {
+		e.preventDefault();
+		const text = commentRef.current.value.trim();
+		if (!text || !loggedUser) return;
+
+		setIsSubmitting(true);
+		const { data, error } = await api.post('/comments', {
+			postId: id,
+			userId: loggedUser.id,
+			content: text
+		});
+
+		if (!error && data) {
+			setComments(prev => [data, ...prev]);
+			commentRef.current.value = '';
+		}
+		setIsSubmitting(false);
 	}
 
 	return (
-		<>
-			<div className={`bg-white rounded-xl px-10 pt-10 pb-2 ${style} h-fit shadow-2xl mb-6`}>
-				<div className='flex flex-row items-center mb-4'>
-					<img className='rounded-full w-16 mr-4 h-16 drop-shadow object-cover' src={profile}/>
-					<div className='flex-col'>
-						<h2 className='font-bold'><button onClick={() => navigate(`/${username}/profile`)}>{name}</button></h2>
-						<p className='font-light text-gray-500'>@{username}</p>
-					</div>
-					{username === loggedUser ?
-						<div className='ml-auto mb-auto right-0 flex flex-col items-center relative'>
-							<button onClick={() => setIsMenuOpen(!isMenuOpen)} className='text-2xl text-gray-600 hover:text-black transition'>...</button>
-							{isMenuOpen &&(
-								<menu className='bg-[#FCFCFC] absolute top-8 right-0 rounded-lg border border-gray-200 px-4 py-2 text-center text-gray-600 z-10'>
-									<li><button onClick={handleDeletePost} className='hover:text-black transition text-red-500 font-semibold'>{removeButtonPlaceholder}</button></li>
-								</menu>
-							)}
-						</div>
-						: null}
-				</div>
-				<p>{description}</p>
-				{image && <img className='py-2 rounded-xl mt-3' src={image}/>}
-				<div className='flex items-center justify-between mt-4 mb-2'>
-					<p className='text-xs'>{likeCount} Likes · {commentCount} Comments</p>
-					<div className='flex items-center gap-4'>
-						<button className={`text-sm ${isLiked ? 'text-red-500' : 'text-gray-600 text-xl'} hover:text-black transition`} onClick={toggleLike} disabled={isLikeBusy}>
-							{isLiked ? 'Unlike' : '𖹭'}
-						</button>
-						<button className='text-sm text-gray-600 text-xl hover:text-black transition' onClick={openComments}>✎</button>
-					</div>
+		<div className='bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-[680px] w-full mx-auto my-4 transition hover:shadow-md'>
+			<div className='flex items-center gap-3 mb-4'>
+				<img
+					onClick={() => navigate(`/${username}/profile`)}
+					className='w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition'
+					src={userPic}
+					alt={name}
+				/>
+				<div>
+					<h3 onClick={() => navigate(`/${username}/profile`)} className='font-bold text-gray-800 cursor-pointer hover:underline'>{name}</h3>
+					<p className='text-sm text-gray-500'>@{username}</p>
 				</div>
 			</div>
 
-			{isCommentsOpen && (
-				<div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
-					<div className='bg-white rounded-xl w-[600px] max-w-[90vw] p-6 shadow-2xl'>
-						<div className='flex justify-between items-center mb-4'>
-							<h3 className='font-semibold'>Comments</h3>
-							<button className='text-gray-500 hover:text-black' onClick={() => setIsCommentsOpen(false)}>✕</button>
-						</div>
-						<form onSubmit={submitComment} className='flex gap-2 mb-4'>
-							<input type='text' value={newComment} onChange={e => setNewComment(e.target.value)} placeholder='Add a comment...' className='flex-1 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-gray-400' disabled={isCommentBusy}/>
-							<button type='submit' disabled={isCommentBusy || !newComment.trim()} className={`px-4 py-2 rounded-xl text-white font-medium ${isCommentBusy || !newComment.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#84C7AE] hover:bg-green-400'}`}>Post</button>
-						</form>
-						<div className='max-h-[300px] overflow-y-auto'>
-							{isCommentsLoading ? <p className='text-sm text-gray-500'>Loading...</p> : comments.length === 0 ? <p className='text-sm text-gray-500'>No comments yet.</p> : (
-								<ul className='space-y-3'>
-									{comments.map(c => (
-										<li key={c.id} className='text-sm'>
-											<div className='flex items-start gap-3'>
-												<button onClick={() => { setIsCommentsOpen(false); navigate(`/${c.user?.username}/profile`) }}>
-													<img src={c.user?.pic} className='w-8 h-8 rounded-full object-cover'/>
-												</button>
-												<div>
-													<button onClick={() => { setIsCommentsOpen(false); navigate(`/${c.user?.username}/profile`) }} className='font-medium hover:underline'>{c.user?.name || c.user?.username}</button>
-													<p className='text-gray-900'>{c.content}</p>
-												</div>
-											</div>
-										</li>))}
-								</ul>
-							)}
-						</div>
-					</div>
+			{content && (
+				<p className='text-gray-700 mb-4 whitespace-pre-wrap break-words leading-relaxed'>
+					{content}
+				</p>
+			)}
+
+			{image && (
+				<div className="w-full rounded-xl overflow-hidden mb-4 bg-gray-50 flex justify-center">
+					<img className='max-h-[500px] object-contain' src={image} alt="Post media" />
 				</div>
 			)}
-		</>
-	)
+
+			<div className='flex items-center gap-6 pt-4 border-t border-gray-100 text-gray-500 font-medium'>
+				<button onClick={handleLike} className={`flex items-center gap-2 transition ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}>
+					<span className="text-xl">{isLiked ? '❤️' : '🤍'}</span>
+					{likes.length} Likes
+				</button>
+				<button onClick={() => setShowComments(!showComments)} className='flex items-center gap-2 hover:text-blue-500 transition'>
+					<span className="text-xl">💬</span>
+					{comments.length} Comments
+				</button>
+			</div>
+
+			{showComments && (
+				<div className="mt-4 pt-4 border-t border-gray-100">
+					{loggedUser && (
+						<form onSubmit={handleAddComment} className="flex gap-2 mb-4">
+							<input
+								ref={commentRef}
+								type="text"
+								placeholder="Write a comment..."
+								className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+							/>
+							<button disabled={isSubmitting} type="submit" className="text-blue-500 font-bold px-3 text-sm disabled:opacity-50 hover:underline">
+								Post
+							</button>
+						</form>
+					)}
+					<ul className="space-y-3 max-h-48 overflow-y-auto" style={{scrollbarWidth: 'none'}}>
+						{comments.map((comment) => (
+							<li key={comment.id} className="bg-gray-50 p-3 rounded-lg text-sm break-words">
+								<span className="font-bold mr-2 text-gray-700">User_{comment.userId}:</span>
+								<span className="text-gray-600">{comment.content}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
+	);
 }
 
 export default PostCards;

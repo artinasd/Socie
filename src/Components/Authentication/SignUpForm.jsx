@@ -1,52 +1,75 @@
-import {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import { useRef, useState } from "react";
+import { useDispatch } from "react-redux";
+import { loggedUserActions } from "../../Data/loggedInUserSlice.js";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../Data/api.js";
 
-function SignUpForm({nextStep, updateUserData}) {
+function SignUpForm() {
+    const nameRef = useRef();
+    const usernameRef = useRef();
+    const emailRef = useRef();
+    const passwordRef = useRef();
+    const [errorMsg, setErrorMsg] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const dispatch = useDispatch();
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
 
-    function handleSubmit() {
-        updateUserData({email, password});
-        nextStep();
+    async function submitHandle(event) {
+        event.preventDefault();
+        setErrorMsg('');
+        setIsLoading(true);
+
+        const newUser = {
+            name: nameRef.current.value.trim(),
+            username: usernameRef.current.value.trim(),
+            email: emailRef.current.value.trim(),
+            password: passwordRef.current.value,
+            pic: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' // Default pic
+        };
+
+        if (!newUser.name || !newUser.username || !newUser.email || !newUser.password) {
+            setErrorMsg('All fields are required.');
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const { data, error } = await api.post('/users', newUser);
+
+            if (error) {
+                setErrorMsg('Username or Email might already be taken.');
+            } else {
+                dispatch(loggedUserActions.setLoggedUser(data.username));
+                navigate('/complete-signup'); // Direct to avatar/bio setup
+            }
+        } catch (err) {
+            setErrorMsg('Server error. Please try again later.');
+        }
+
+        setIsLoading(false);
     }
 
     return (
-        <div className='bg-[#C1E3D6] w-screen h-screen flex items-center justify-center'>
-            <div className='bg-[#F6FBF9] rounded-xl w-1/3 h-2/3 space-y-4 p-10 flex flex-col items-center'>
-                <h1 className='font-bold text-3xl'>Create A New Account</h1>
-                <p className='text-center px-4 text-lg font-light'>
-                    Create an account to enjoy all our services without any ads for free :)
-                </p>
+        <div className='flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg w-full max-w-sm mx-auto mt-10'>
+            <h2 className='text-2xl font-bold text-gray-700 mb-6'>Create Account</h2>
+            {errorMsg && <p className='text-red-500 text-sm mb-4 bg-red-50 p-2 rounded w-full text-center'>{errorMsg}</p>}
 
-                <div className='flex flex-col space-y-4 w-72'>
-                    <input
-                        required={true}
-                        placeholder='Email Address'
-                        type='email'
-                        onChange={(e) => setEmail(e.target.value)}
-                        className='p-3 rounded-xl mt-8 border border-gray-200'/>
+            <form onSubmit={submitHandle} className='w-full space-y-4'>
+                <input ref={nameRef} type='text' placeholder='Full Name'
+                       className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
+                <input ref={usernameRef} type='text' placeholder='Username'
+                       className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
+                <input ref={emailRef} type='email' placeholder='Email Address'
+                       className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
+                <input ref={passwordRef} type='password' placeholder='Password'
+                       className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
 
-                    <input
-                        required={true}
-                        placeholder='Password'
-                        type='password'
-                        onChange={(e) => setPassword(e.target.value)}
-                        className='p-3 rounded-xl border border-gray-200'/>
-
-                    <input
-                        type='submit'
-                        value='Next'
-                        onClick={handleSubmit}
-                        className='font-bold bg-[#84C7AE] p-3 rounded-xl text-white mx-10
-                                    hover:bg-green-400 transition duration-300'/>
-
-                    <p className='text-center pt-2 text-xs'>Already on Socie?<br/> Click here to &nbsp;
-                        <button onClick={() => navigate('/log-in')} className='hover:underline text-blue-500'>log in</button>
-                        &nbsp; to your account
-                    </p>
-                </div>
-            </div>
+                <button type="submit" disabled={isLoading}
+                        className={`w-full text-white font-bold py-3 rounded-lg transition ${isLoading ? 'bg-green-300 cursor-not-allowed' : 'bg-[#00DB7F] hover:bg-green-500'}`}>
+                    {isLoading ? 'Creating...' : 'Sign Up'}
+                </button>
+            </form>
         </div>
     );
 }

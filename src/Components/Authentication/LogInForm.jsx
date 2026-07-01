@@ -1,62 +1,69 @@
-import {useRef, useState} from "react";
-import {loggedUserActions} from "../../Data/loggedInUserSlice.js";
-import {useDispatch} from "react-redux";
-import {useNavigate} from "react-router-dom";
+import { useRef, useState } from "react";
+import { useDispatch } from "react-redux";
+import { loggedUserActions } from "../../Data/loggedInUserSlice.js";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../Data/api.js";
 
 function LogInForm() {
-    const passwordRef = useRef('')
-    const [username, setUsername] = useState('');
-    const [isDisabled, setIsDisabled] = useState(false);
+    const usernameRef = useRef();
+    const passwordRef = useRef();
     const [errorMsg, setErrorMsg] = useState('');
-    const dispatch = useDispatch()
-    const navigate = useNavigate()
+    const [isLoading, setIsLoading] = useState(false);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
 
-    async function loginHandle(e) {
-        e.preventDefault();
+    async function submitHandle(event) {
+        event.preventDefault();
         setErrorMsg('');
-        setIsDisabled(true);
+        setIsLoading(true);
 
-        if (!username || !passwordRef.current.value) {
-            setErrorMsg("Please fill in both fields");
-            setIsDisabled(false);
-            return;
-        }
-
-        let { data: user, error } = await api.post('/users/login', {
-            username,
+        const credentials = {
+            username: usernameRef.current.value.trim(),
             password: passwordRef.current.value
-        });
+        };
 
-        if (error || !user) {
-            setErrorMsg(error || "User not found");
-            setIsDisabled(false);
+        if (!credentials.username || !credentials.password) {
+            setErrorMsg('Please enter both username and password.');
+            setIsLoading(false);
             return;
         }
 
-        dispatch(loggedUserActions.setLoggedUser(user.username))
-        navigate(`/${user.username}/profile`)
+        try {
+            const { data, error } = await api.post('/users/login', credentials);
+
+            if (error || !data) {
+                setErrorMsg(error || 'Invalid username or password.');
+            } else {
+                dispatch(loggedUserActions.setLoggedUser(data.username));
+                navigate('/');
+            }
+        } catch (err) {
+            setErrorMsg('Server error. Please try again later.');
+        }
+
+        setIsLoading(false);
     }
 
     return (
-        <div className='bg-[#C1E3D6] w-screen h-screen flex items-center justify-center'>
-            <div className='bg-[#F6FBF9] rounded-xl w-1/3 h-2/3 space-y-4 p-10 flex flex-col items-center shadow-lg'>
-                <h1 className='font-bold text-3xl'>Sign In To Your Account</h1>
-                <p className='text-center px-4 text-lg font-light'>
-                    Log back to your account and check out all you've missed while you've been away
-                </p>
-                <form onSubmit={loginHandle} className='flex flex-col space-y-4 w-72'>
-                    <input required={true} placeholder='Username' type='text' value={username} onChange={e => setUsername(e.target.value)} className='p-3 rounded-xl mt-8 border border-gray-200 focus:outline-none focus:border-[#84C7AE]'/>
-                    <input required={true} placeholder='Password' type='password' ref={passwordRef} className='p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#84C7AE]'/>
-                    {errorMsg && <p className="text-red-500 text-sm text-center">{errorMsg}</p>}
-                    <button disabled={isDisabled} type='submit' className={`p-3 rounded-xl text-white mx-10 transition duration-300 font-bold ${isDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#84C7AE] hover:bg-green-400 shadow-md'}`}>
-                        {isDisabled ? 'Please Wait...' : 'Login'}
-                    </button>
-                    <p className='text-center pt-2 text-xs'>Don't have an account?<br/> Click here to &nbsp;
-                        <button type="button" onClick={() => navigate('/sign-up')} className='hover:underline text-blue-500 font-semibold'>sign up</button>
-                    </p>
-                </form>
-            </div>
+        <div className='flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg w-full max-w-sm mx-auto mt-10'>
+            <h2 className='text-2xl font-bold text-gray-700 mb-6'>Welcome Back</h2>
+            {errorMsg && <p className='text-red-500 text-sm mb-4 bg-red-50 p-2 rounded w-full text-center'>{errorMsg}</p>}
+
+            <form onSubmit={submitHandle} className='w-full space-y-4'>
+                <div>
+                    <input ref={usernameRef} type='text' placeholder='Username'
+                           className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
+                </div>
+                <div>
+                    <input ref={passwordRef} type='password' placeholder='Password'
+                           className='w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:border-blue-500 transition' />
+                </div>
+
+                <button type="submit" disabled={isLoading}
+                        className={`w-full text-white font-bold py-3 rounded-lg transition ${isLoading ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                    {isLoading ? 'Logging in...' : 'Log In'}
+                </button>
+            </form>
         </div>
     );
 }
