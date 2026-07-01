@@ -74,7 +74,7 @@ function SidebarR2 () {
     return (
         <>
             <div className='mr-3 mt-3 mb-6'>
-                <div style={{scrollbarWidth: "none"}} className={`bg-white rounded-xl shadow-sm border border-gray-100 w-[270px] max-h-[420px] overflow-y-scroll`}>
+                <div style={{scrollbarWidth: "none"}} className={`bg-white rounded-xl shadow-sm border border-gray-100 w-full max-w-[270px] lg:w-[270px] max-h-[420px] overflow-y-scroll`}>
                     <div className='px-5 py-4 flex flex-row justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-50'>
                         <h2 className='text-gray-500 text-xs font-bold uppercase tracking-wider'>Suggestions</h2>
                         {expandButton}

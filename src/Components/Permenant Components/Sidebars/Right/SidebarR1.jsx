@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {useSelector} from "react-redux";
-import supabase from "../../../../Data/supabase.js";
+import { api } from "../../../../Data/api.js";
 
 function SidebarR1 () {
     const loggedUser = useSelector(state => state.loggedUserData)
@@ -11,11 +11,7 @@ function SidebarR1 () {
         async function fetchRequests() {
             if (!loggedUser) return;
             setIsLoading(true)
-            const { data, error } = await supabase
-                .from('follow_requests')
-                .select('id, fromUserId, toUserId')
-                .eq('toUserId', loggedUser.id)
-                .order('id', { ascending: false })
+            const { data, error } = await api.get('/follow_requests')
 
             if (error) {
                 setRequests([])
@@ -23,14 +19,11 @@ function SidebarR1 () {
                 return
             }
 
-            const reqs = data || []
+            const reqs = (data || []).filter(r => r.toUserId === loggedUser.id)
             const fromIds = Array.from(new Set(reqs.map(r => r.fromUserId)))
             let usersMap = {}
             if (fromIds.length > 0) {
-                const { data: usersData } = await supabase
-                    .from('users')
-                    .select('id, username, name, pic')
-                    .in('id', fromIds)
+                const { data: usersData } = await api.get('/users')
                 usersMap = (usersData || []).reduce((acc, u) => { acc[u.id] = u; return acc }, {})
             }
 
@@ -43,31 +36,20 @@ function SidebarR1 () {
     }, [loggedUser])
 
     async function handleAccept(req) {
-        // Create connection
-        await supabase
-            .from('connections')
-            .insert([{ followerId: req.fromUserId, followingId: req.toUserId }])
-        // Delete request
-        await supabase
-            .from('follow_requests')
-            .delete()
-            .eq('id', req.id)
-        // Refresh
+        await api.post('/connections', { followerId: req.fromUserId, followingId: req.toUserId })
+        await api.delete('/follow_requests', { id: req.id })
         setRequests(prev => prev.filter(r => r.id !== req.id))
     }
 
     async function handleDecline(req) {
-        await supabase
-            .from('follow_requests')
-            .delete()
-            .eq('id', req.id)
+        await api.delete('/follow_requests', { id: req.id })
         setRequests(prev => prev.filter(r => r.id !== req.id))
     }
 
     return (
         <>
             <div className='mr-3 mt-3'>
-                <div className='p-5 bg-white rounded-xl shadow-lg w-[270px]'>
+                <div className='p-5 bg-white rounded-xl shadow-lg w-full max-w-[270px] lg:w-[270px]'>
                     <h2 className='text-gray-400 text-xs font-bold'>Follow Requests</h2>
 
                     {(!loggedUser) && (

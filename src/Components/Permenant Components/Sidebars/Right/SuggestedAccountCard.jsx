@@ -2,7 +2,7 @@ import {useNavigate} from "react-router-dom";
 import {useEffect, useMemo, useRef, useState} from "react";
 import { createPortal } from 'react-dom'
 import {useSelector} from "react-redux";
-import supabase from "../../../../Data/supabase.js";
+import { api } from "../../../../Data/api.js";
 
 function SuggestedAccountCard({image, name, username, matches}) {
     const navigate = useNavigate();
@@ -23,12 +23,7 @@ function SuggestedAccountCard({image, name, username, matches}) {
     useEffect(() => {
         async function checkRequest() {
             if (!loggedUser || !targetUser) return
-            const { data } = await supabase
-                .from('follow_requests')
-                .select('id')
-                .eq('fromUserId', loggedUser.id)
-                .eq('toUserId', targetUser.id)
-                .maybeSingle()
+            const { data } = await api.get(`/follow_requests/check/${loggedUser.id}/${targetUser.id}`)
             setIsRequested(!!data)
         }
         checkRequest()
@@ -38,20 +33,14 @@ function SuggestedAccountCard({image, name, username, matches}) {
         if (!loggedUser || !targetUser) return navigate(`/${username}/profile`)
 
         if (targetUser.private) {
-            // send follow request if not already
             if (!isRequested) {
-                await supabase
-                    .from('follow_requests')
-                    .insert([{ fromUserId: loggedUser.id, toUserId: targetUser.id }])
+                await api.post('/follow_requests', { fromUserId: loggedUser.id, toUserId: targetUser.id })
                 setIsRequested(true)
             }
             return
         }
 
-        // follow directly for public profiles
-        await supabase
-            .from('connections')
-            .insert([{ followerId: loggedUser.id, followingId: targetUser.id }])
+        await api.post('/connections', { followerId: loggedUser.id, followingId: targetUser.id })
     }
 
     const followLabel = isFollowed ? '✔ Followed' : isRequested ? 'Requested' : '+ Follow'
@@ -65,7 +54,6 @@ function SuggestedAccountCard({image, name, username, matches}) {
     })()
 
     useEffect(() => {
-        // auto show on mount if matches exist
         if (hintText && cardRef.current) {
             const rect = cardRef.current.getBoundingClientRect()
             setHintPos({ top: rect.top + window.scrollY, left: rect.left + window.scrollX - 8 })

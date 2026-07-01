@@ -4,14 +4,14 @@ import ic3 from '../../../../assets/SL2 (3).png'
 import {useNavigate} from "react-router-dom";
 import {useSelector} from "react-redux";
 
-function SidebarL1() {
+function SidebarL2() {
     const navigate = useNavigate()
     const loggedUsername = useSelector(state => state.loggedUser)
 
     return (
         <>
             <div className='ml-3 mt-3'>
-                <div className='p-5 bg-white rounded-xl pr-24 shadow-lg w-[270px]'>
+                <div className='p-5 bg-white rounded-xl pr-24 shadow-lg w-full max-w-[270px] lg:w-[270px]'>
                     <h2 className='text-gray-400 text-xs font-bold'>Account</h2>
                     <ul className='space-y-4 mt-4 font-bold text-gray-500'>
                         <li>
@@ -47,4 +47,4 @@ function SidebarL1() {
     )
 }
 
-export default SidebarL1
+export default SidebarL2

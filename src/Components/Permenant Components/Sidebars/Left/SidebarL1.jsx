@@ -12,7 +12,7 @@ function SidebarL1() {
     return (
         <>
             <div className='ml-3 mt-3'>
-                <div className='p-5 bg-white rounded-xl pr-24 shadow-lg w-[270px]'>
+                <div className='p-5 bg-white rounded-xl pr-24 shadow-lg w-full max-w-[270px] lg:w-[270px]'>
                     <h2 className='text-gray-400 text-xs font-bold'>New Feeds</h2>
                     <ul className='space-y-4 mt-4 font-bold text-gray-500'>
                         <li>
@@ -45,7 +45,7 @@ function SidebarL1() {
                         </li>
 
                         <li>
-                            <button onClick={() => navigate(`${reduxStateLoggedUser}/profile`)}
+                            <button onClick={() => navigate(`/${reduxStateLoggedUser}/profile`)}
                                     className='flex flex-row items-center hover:text-blue-600 transition duration-500'>
                                 <div className='bg-gradient-to-br from-cyan-600 to-cyan-400 rounded-full w-12 h-12 mr-4'>
                                     <img className='w-8 mt-2 ml-2' src={ic4}/>

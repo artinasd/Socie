@@ -5,7 +5,7 @@ import gallery from '../../assets/gallery.png'
 import {useDispatch, useSelector} from "react-redux";
 import React, {useEffect, useRef, useState} from "react";
 import ImageCropper from "../ImageCropper.jsx";
-import supabase from "../../Data/supabase.js";
+import { api } from "../../Data/api.js";
 import {postsSliceActions} from "../../Data/postsSlice.js";
 
 function FeedAddPost() {
@@ -21,13 +21,10 @@ function FeedAddPost() {
     useEffect(() => {
         if (reduxStateLoggedUser) {
             async function fetchId () {
-                let {data: id, error} = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('username', reduxStateLoggedUser)
-                    .single()
-                if (!error && id) {
-                    setUserId(id.id)
+                let {data: users, error} = await api.get('/users')
+                if (!error && users) {
+                    const user = users.find(u => u.username === reduxStateLoggedUser)
+                    if (user) setUserId(user.id)
                 }
             }
             fetchId()
@@ -58,14 +55,11 @@ function FeedAddPost() {
             return;
         }
         setIsSubmitting(true);
-        const { data, error } = await supabase
-            .from('posts')
-            .insert([
-                {posterId: userId,
-                    media: uploadedMediaState,
-                    description: descriptionRef.current.value},
-            ])
-            .select()
+        const { data, error } = await api.post('/posts', {
+            posterId: userId,
+            media: uploadedMediaState,
+            description: descriptionRef.current.value
+        })
 
         if (descriptionRef.current) {
             descriptionRef.current.value = ''
@@ -74,8 +68,8 @@ function FeedAddPost() {
         }
 
         try {
-            let { data: posts } = await supabase.from('posts').select('*')
-            let { data: users } = await supabase.from('users').select('*')
+            let { data: posts } = await api.get('/posts')
+            let { data: users } = await api.get('/users')
             const postAndUser = (posts || []).map(post => ({ ...post, user: users.find(u => u.id === post.posterId) }))
             dispatch(postsSliceActions.setPosts(postAndUser))
         } catch(e) {}

@@ -6,7 +6,7 @@ import {useEffect, useRef, useState} from "react";
 import { createPortal } from 'react-dom'
 import {useDispatch} from "react-redux";
 import {loggedUserActions} from "../../Data/loggedInUserSlice.js";
-import supabase from "../../Data/supabase.js";
+import { api } from "../../Data/api.js";
 
 function Header () {
     const navigate = useNavigate();
@@ -25,22 +25,14 @@ function Header () {
     useEffect(() => {
         if (reduxLoggedUserState) {
             async function fetchUser () {
-                const {data, error} = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('username', reduxLoggedUserState)
-                    .single()
-
-                setLoggedUser(data)
+                const {data: users, error} = await api.get('/users')
+                if (!error && users) {
+                    setLoggedUser(users.find(u => u.username === reduxLoggedUserState))
+                }
             }
             fetchUser()
         }
     }, [reduxLoggedUserState]);
-
-
-    // if (reduxLoggedUserState && !loggedUser) {
-    //     return <div>Loading user data...</div>;
-    // }
 
     function hoverHandle() {
         setIsHoveringState(true)
@@ -106,7 +98,6 @@ function Header () {
 
     return (
         <div className='sticky top-0 z-10'>
-
             <div className='bg-white h-24 top sticky flex flex-row items-center grid grid-cols-3'>
                 <div className='flex items-center col-span-1'>
                     <img src={siteLogo} className='w-20'/>
@@ -152,11 +143,11 @@ function Header () {
                                  onMouseOver={hoverHandle}
                                  onMouseOut={hoverOverHandle}
                                  src={loggedUser ? loggedUser.pic : ''}
-                                 className='rounded-full w-[60px] h-[60px] border-2 border-black p-1
+                                 className='rounded-full w-[60px] h-[60px] border-2 border-black p-1 object-cover cursor-pointer
                                                 hover:border-cyan-400 transition-all duration-300'/>
                             {isHoveringState &&
-                                <div className='absolute z-50 mt-2 transition'>
-                                    <menu className='p-3 bg-gray-50 drop-shadow z-50 rounded-lg -ml-1.5'>
+                                <div className='absolute z-50 mt-2 transition right-4'>
+                                    <menu className='p-3 bg-gray-50 drop-shadow z-50 rounded-lg'>
                                         <li><button onClick={logoutHandle} className='hover:underline'>Logout</button></li>
                                     </menu>
                                 </div>
@@ -169,32 +160,24 @@ function Header () {
                 }
             </div>
 
-            <div className='bg-gray-50 -mt-[12px] drop-shadow text-gray-500'>
-                <ul className='flex space-x-[100px] mt-3 justify-center'>
+            <div className='bg-gray-50 -mt-[12px] drop-shadow text-gray-500 relative z-[5]'>
+                <ul className='flex space-x-[100px] mt-3 justify-center py-2'>
                     <div className='border-l'/>
-
                     <li className='opacity-100'>
                         <button onClick={() => navigate('/')}>Feed</button>
                     </li>
-
                     <div className='border-l'/>
-
                     <li>
                         <button>Discover</button>
                     </li>
-
                     <div className='border-l'/>
-
                     <li>
                         <button>Stories</button>
                     </li>
-
                     <div className='border-l'/>
-
                     <li>
                         <button onClick={() => navigate(`/${reduxLoggedUserState}/profile`)}>Profile</button>
                     </li>
-
                     <div className='border-l'/>
                 </ul>
             </div>

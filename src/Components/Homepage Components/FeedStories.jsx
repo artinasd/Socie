@@ -4,7 +4,7 @@ import {useRef, useState, useEffect} from "react";
 import ImageCropper from "../ImageCropper.jsx";
 import {useSelector} from "react-redux";
 import loadingGif from "../../assets/loading.gif"
-import supabase from "../../Data/supabase.js"
+import { api } from "../../Data/api.js"
 
 function FeedStories(props) {
     const [storyList, setStoryList] = useState([])
@@ -79,15 +79,11 @@ function FeedStories(props) {
         setUploadedStory(croppedBase64)
         setCropper(null)
         try {
-            const { error } = await supabase
-                .from('stories')
-                .insert([{
-                    user_id: loggedUser.id,
-                    media_url: croppedBase64,
-                    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-                }])
-                .select()
-                .single();
+            const { error } = await api.post('/stories', {
+                user_id: loggedUser.id,
+                media_url: croppedBase64,
+                expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            });
 
             if (error) {
                 console.error('Database error:', error);
@@ -110,18 +106,16 @@ function FeedStories(props) {
         if (!initialAllUsers || initialAllUsers.length === 0) return;
 
         try {
-            const { data: stories, error } = await supabase
-                .from('stories')
-                .select('*')
-                .gt('expires_at', new Date().toISOString())
-                .order('created_at', { ascending: false });
+            const { data: stories, error } = await api.get('/stories');
 
             if (error || !stories || stories.length === 0) {
                 setStoryList([]);
                 return;
             }
 
-            const storiesWithUsers = stories.map(story => {
+            const activeStories = stories.filter(s => new Date(s.expires_at) > new Date());
+
+            const storiesWithUsers = activeStories.map(story => {
                 const user = initialAllUsers.find(u => u.id === story.user_id);
                 return {
                     ...story,

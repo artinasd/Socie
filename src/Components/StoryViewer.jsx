@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import supabase from '../Data/supabase.js';
+import { api } from '../Data/api.js';
 
 function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
@@ -13,12 +13,11 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
     const currentStory = storyData?.stories[currentStoryIndex];
     const totalStories = storyData?.stories.length || 0;
 
-    // Auto-advance story every 5 seconds
     useEffect(() => {
         if (!isPlaying || !currentStory) return;
 
-        const duration = 5000; // 5 seconds
-        const interval = 50; // Update every 50ms for smooth progress
+        const duration = 5000;
+        const interval = 50;
         let elapsed = 0;
 
         intervalRef.current = setInterval(() => {
@@ -38,14 +37,9 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
         };
     }, [currentStoryIndex, isPlaying, currentStory]);
 
-    // Track story view
     useEffect(() => {
         if (currentStory && loggedUser && currentStory.user_id !== loggedUser.id) {
-            // Increment view count
-            supabase
-                .from('stories')
-                .update({ views_count: currentStory.views_count + 1 })
-                .eq('id', currentStory.id);
+            api.put(`/stories/${currentStory.id}`, { views_count: (currentStory.views_count || 0) + 1 });
         }
     }, [currentStory, loggedUser]);
 
@@ -79,16 +73,14 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
         const clickX = e.clientX - rect.left;
         const percentage = (clickX / rect.width) * 100;
         setProgress(percentage);
-        
-        // Calculate new elapsed time based on percentage
+
         const duration = 5000;
         const newElapsed = (percentage / 100) * duration;
-        
-        // Restart the timer from the new position
+
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
         }
-        
+
         let elapsed = newElapsed;
         intervalRef.current = setInterval(() => {
             elapsed += 50;
@@ -107,7 +99,6 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
 
     return (
         <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
-            {/* Story Media */}
             <div className="relative w-full h-full">
                 {currentStory.media_url.startsWith('data:video') ? (
                     <video
@@ -128,7 +119,6 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
                 )}
             </div>
 
-            {/* Progress Bars */}
             <div className="absolute top-4 left-4 right-4 flex gap-1">
                 {storyData.stories.map((_, index) => (
                     <div
@@ -139,10 +129,10 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
                         <div
                             className="h-full bg-white rounded-full transition-all duration-75 shadow-sm"
                             style={{
-                                width: index < currentStoryIndex 
-                                    ? '100%' 
-                                    : index === currentStoryIndex 
-                                        ? `${progress}%` 
+                                width: index < currentStoryIndex
+                                    ? '100%'
+                                    : index === currentStoryIndex
+                                        ? `${progress}%`
                                         : '0%'
                             }}
                         />
@@ -150,7 +140,6 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
                 ))}
             </div>
 
-            {/* Header */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between text-white">
                 <div className="flex items-center gap-3 bg-black bg-opacity-30 rounded-full px-3 py-2 backdrop-blur-sm shadow-lg">
                     <img
@@ -161,9 +150,9 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
                     <div>
                         <p className="font-semibold text-sm drop-shadow-sm">{storyData.user.name}</p>
                         <p className="text-xs opacity-90 drop-shadow-sm">
-                            {new Date(currentStory.created_at).toLocaleTimeString([], { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
+                            {new Date(currentStory.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
                             })}
                         </p>
                     </div>
@@ -176,21 +165,17 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
                 </button>
             </div>
 
-            {/* Navigation Areas */}
             <div className="absolute inset-0 flex">
-                {/* Previous Story Area */}
                 <div
                     className="w-1/2 h-full cursor-pointer"
                     onClick={handlePrevious}
                 />
-                {/* Next Story Area */}
                 <div
                     className="w-1/2 h-full cursor-pointer"
                     onClick={handleNext}
                 />
             </div>
 
-            {/* Pause/Play Button */}
             <button
                 onClick={handlePause}
                 className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-60 rounded-full p-2 hover:bg-opacity-80 transition-all shadow-lg backdrop-blur-sm"
@@ -198,7 +183,6 @@ function StoryViewer({ storyData, onClose, onNext, onPrevious }) {
                 {isPlaying ? '⏸️' : '▶️'}
             </button>
 
-            {/* Story Counter */}
             <div className="absolute bottom-4 right-4 text-white text-sm bg-black bg-opacity-60 px-3 py-2 rounded-full shadow-lg backdrop-blur-sm">
                 {currentStoryIndex + 1} / {totalStories}
             </div>
